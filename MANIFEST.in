@@ -1,0 +1,4 @@
+include ProgressedHttp *.py
+include ProgressedHttp/test *.py
+
+include LICENSE README.md test.sh

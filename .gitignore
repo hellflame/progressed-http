@@ -1,0 +1,17 @@
+*.py[cod]
+.idea
+#packages
+.DS_Store
+
+*.egg-info
+dist
+README
+build
+eggs
+parts
+bin
+var
+sdist
+develop-eggs
+
+
