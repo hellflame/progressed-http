@@ -226,6 +226,53 @@ class HTTPCons(object):
         self.host = host
         self.port = port
 
+    @staticmethod
+    def url_parser(url):
+        """
+        URL 解析
+        :param url: str
+        :return: dict
+        """
+        parse = {}
+        if '//' in url:
+            # scheme://host.name:port/href**
+            scheme = url[0: url.index('//')].lower()
+            if scheme == 'http:':
+                parse['scheme'] = 'http'
+            elif scheme == 'https:':
+                parse['scheme'] = 'https'
+            else:
+                raise Exception("Unknown Scheme Type `{}`".format(scheme))
+            left = url[url.index('//') + 2:]
+        else:
+            # host.name:port/href**
+            parse['scheme'] = 'http'
+            left = url
+        try:
+            address = left[: left.index("/")]
+            parse['href'] = left[left.index('/'):]
+        except ValueError:
+            address = left
+            parse['href'] = '/'
+
+        if ':' in address:
+            host, port = address.split(':')
+            if port.isdigit():
+                port = int(port)
+            else:
+                raise Exception("Error Connection Port `{}`".format(port))
+        else:
+            host = address
+            if parse['scheme'] == 'http':
+                port = 80
+            else:
+                port = 443
+
+        parse['host'] = host
+        parse['port'] = port
+
+        return parse
+
     def request(self, url, method='GET', headers=None, data=None):
         """
         链接解析，完成请求
@@ -235,33 +282,13 @@ class HTTPCons(object):
         :param data: str => post data entity
         :return: None
         """
-        if '//' not in url:
-            raise URLNotComplete(url, 'url protocol')
-        index = url.index('//')
-        ishttps = url[0: index - 1].lower() == 'https'
-        host_url = url[index + 2:]
-        if "/" not in host_url:
-            host_url += '/'
-        index = host_url.index("/")
-        host_port = host_url[0: index]
-        url = host_url[index:]
-        port = None
-        if ':' in host_port:
-            split = host_port.split(":")
-            host = split[0]
-            port = int(split[1].split("/")[0])
-        else:
-            host = host_port
+        parse = self.url_parser(url)
 
-        if ishttps:
-            if not port:
-                port = 443
-            self.https_init(host, port)
+        if parse['scheme'] == 'https':
+            self.https_init(parse['host'], parse['port'])
         else:
-            if not port:
-                port = 80
-            self.http_init(host, port)
-        self.__send(url, method, headers, post_data=data)
+            self.http_init(parse['host'], parse['port'])
+        self.__send(url, method, headers, data)
         return self.connect
 
     def __send(self, href, method='GET', headers=None, post_data=None):
@@ -280,7 +307,7 @@ class HTTPCons(object):
                 head += "\r\nContent-Length: {}".format(len(post_data))
                 head += "\r\n\r\n{}\r\n".format(post_data)
             else:
-                raise URLNotComplete(href, 'POST data')
+                raise Exception('Unknown POST data')
         elif method == 'GET':
             if post_data:
                 if not type(post_data) == dict:
@@ -302,10 +329,3 @@ class HTTPCons(object):
             self.connect.sendall(data)
 
 
-class URLNotComplete(Exception):
-    def __init__(self, url, lack):
-        self.url = url
-        self.lack = lack
-
-    def __str__(self):
-        return "URL: {} missing {}".format(self.url, self.lack)

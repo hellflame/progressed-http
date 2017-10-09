@@ -22,6 +22,57 @@ class HTTPTest(unittest.TestCase):
     def chunked_info(resp):
         return "分块编码" if resp.chunked else "常规编码"
 
+    def test_url_parser(self):
+        parser = HTTPCons.url_parser
+        self.assertDictEqual(parser("http://www.hellflame.net:233/root/hellflame"), {
+            'scheme': 'http',
+            'host': 'www.hellflame.net',
+            'port': 233,
+            'href': '/root/hellflame'
+        })
+
+        self.assertDictEqual(parser("https://ok/"), {
+            'scheme': 'https',
+            'host': 'ok',
+            'port': 443,
+            'href': '/'
+        })
+
+        self.assertDictEqual(parser("hellflame.net/"), {
+            'scheme': 'http',
+            'host': 'hellflame.net',
+            'port': 80,
+            'href': '/'
+        })
+
+        self.assertDictEqual(parser("hellflame.net"), {
+            'scheme': 'http',
+            'host': 'hellflame.net',
+            'port': 80,
+            'href': '/'
+        })
+
+        self.assertDictEqual(parser("http://hell.net:443"), {
+            'scheme': 'http',
+            'host': 'hell.net',
+            'port': 443,
+            'href': '/'
+        })
+
+        self.assertDictEqual(parser("https://hell.net:80"), {
+            'scheme': 'https',
+            'host': 'hell.net',
+            'port': 80,
+            'href': '/'
+        })
+
+        self.assertDictEqual(parser("hell.net:443"), {
+            'scheme': 'http',
+            'host': 'hell.net',
+            'port': 443,
+            'href': '/'
+        })
+
     def test_https_request(self):
         req = HTTPCons()
         connect = req.request("https://static.hellflame.net/resource/de5ca9cf5320673dc43b526e3d737f05")
