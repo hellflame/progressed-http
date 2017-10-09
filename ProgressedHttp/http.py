@@ -4,7 +4,6 @@ from __future__ import absolute_import, division, print_function
 from ProgressedHttp import progress, __version__
 import socket
 import time
-import sys
 import ssl
 import os
 
@@ -175,9 +174,9 @@ class HTTPCons(object):
     """
     启动连接，发出请求
     """
+    user_agent = "ProgressedAgent {version} by hellflame".format(version=__version__)
+
     def __init__(self, debug=False):
-        self.host = ''
-        self.port = 0
         self.is_debug = debug
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connect = None
@@ -210,8 +209,6 @@ class HTTPCons(object):
         self.connect = context.wrap_socket(self.s, server_hostname=host)
         # self.connect.settimeout(65)
         self.connect.connect((host, port))
-        self.host = host
-        self.port = port
 
     def http_init(self, host, port):
         """
@@ -223,8 +220,6 @@ class HTTPCons(object):
         self.connect = self.s
         # self.connect.settimeout(60)
         self.connect.connect((host, port))
-        self.host = host
-        self.port = port
 
     @staticmethod
     def url_parser(url):
@@ -273,6 +268,50 @@ class HTTPCons(object):
 
         return parse
 
+    @staticmethod
+    def http_parser(host, href, method, headers, data):
+        method = method.upper()
+        if method == 'GET':
+            if data:
+                try:
+                    if '?' not in href:
+                        href += '?'
+                    href += '&'.join(['{}={}'.format(k, v) for k, v in data.items()])
+                except AttributeError:
+                    raise Exception("`GET` data should be a dict")
+                except Exception:
+                    raise Exception("Failed to unpack url")
+
+        user_agent = HTTPCons.user_agent
+        if not headers:
+            headers = {
+                'Host': host,
+                'User-Agent': user_agent,
+                'Connection': 'close'
+            }
+        else:
+            headers.update({'Host': host,
+                            'User-Agent': headers.get("User-Agent", user_agent),
+                            'Connection': 'close'})
+
+        try:
+            head = "\r\n".join(["{}: {}".format(k, v) for k, v in headers.items()])
+        except AttributeError:
+            raise Exception("`headers` should be a dict")
+        except Exception:
+            raise Exception("Failed to unpack headers")
+
+        if method == 'POST' and data:
+            head += "\r\nContent-Length: {}".format(len(data))
+        elif method not in ('POST', 'GET'):
+            raise Exception("Method Not Implement `{}`".format(method))
+
+        return {
+            'request': "{method} {href} HTTP/1.1".format(method=method, href=href),
+            'headers': head,
+            'entity': data or ''
+        }
+
     def request(self, url, method='GET', headers=None, data=None):
         """
         链接解析，完成请求
@@ -282,50 +321,28 @@ class HTTPCons(object):
         :param data: str => post data entity
         :return: None
         """
+        # 解析 URL
         parse = self.url_parser(url)
 
-        if parse['scheme'] == 'https':
-            self.https_init(parse['host'], parse['port'])
-        else:
-            self.http_init(parse['host'], parse['port'])
-        self.__send(url, method, headers, data)
+        # 初始化连接
+        getattr(self, 'https_init' if parse['scheme'] == 'https' else 'http_init')(parse['host'], parse['port'])
+
+        # 解析 HTTP 请求
+        parse = self.http_parser(parse['host'], parse['href'], method, headers, data)
+
+        # 拼接请求
+        send = "{0[request]}\r\n{0[headers]}\r\n\r\n{0[entity]}".format(parse)
+
+        if self.is_debug:
+            print("\033[01;33mRequest:\033[00m @{}".format(time.time()))
+            print(send.__repr__().strip("'"))
+
+        # 发送请求
+        self.connect.sendall(send.encode())
+
         return self.connect
 
-    def __send(self, href, method='GET', headers=None, post_data=None):
-        data = """{method} {href} HTTP/1.1\r\n{headers}\r\n\r\n"""
-        user_agent = "ProgressedAgent {version} by hellflame".format(version=__version__)
-        if not headers:
-            head = """Host: {}\r\nUser-Agent: {}\r\nConnection: closed""".format(self.host, user_agent)
-        else:
-            headers.update({'Host': self.host,
-                            'User-Agent': headers.get("User-Agent", user_agent),
-                            'Connection': 'close'})
-            head = "\r\n".join(["{}: {}".format(k, v) for k, v in headers.items()])
-        if method == 'POST':
-            if data and type(data) == str:
-                # upload for one time
-                head += "\r\nContent-Length: {}".format(len(post_data))
-                head += "\r\n\r\n{}\r\n".format(post_data)
-            else:
-                raise Exception('Unknown POST data')
-        elif method == 'GET':
-            if post_data:
-                if not type(post_data) == dict:
-                    raise Exception("post data must be a dict")
-                if '?' not in href[-1]:
-                    href += '?'
 
-                for i in post_data:
-                    href += '{}={}&'.format(i, post_data[i])
-        data = data.format(method=method, href=href, headers=head)
-        if method == 'POST':
-            data = data[:-4]
-        if self.is_debug:
-            print("\033[01;33mRequest:\033[00m\033[01;31m(DANGER)\033[00m @{}".format(time.time()))
-            print(data.__repr__().strip("'"))
-        if sys.version_info.major == 3:
-            self.connect.sendall(data.encode())
-        else:
-            self.connect.sendall(data)
+
 
 
