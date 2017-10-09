@@ -4,10 +4,16 @@ from __future__ import absolute_import, division, print_function
 from ProgressedHttp import progress, __version__
 import socket
 import time
+import sys
 import ssl
 import os
 
 __all__ = ['SockFeed', 'HTTPCons']
+
+if sys.version_info.major == 3:
+    from urllib.request import quote
+else:
+    from urllib import quote
 
 
 class SockFeed(object):
@@ -276,7 +282,7 @@ class HTTPCons(object):
                 try:
                     if '?' not in href:
                         href += '?'
-                    href += '&'.join(['{}={}'.format(k, v) for k, v in data.items()])
+                    href += '&'.join(['{}={}'.format(k, quote(v)) for k, v in data.items()])
                 except AttributeError:
                     raise Exception("`GET` data should be a dict")
                 except Exception:

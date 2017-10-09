@@ -7,6 +7,7 @@ import hashlib
 import tempfile
 
 from ProgressedHttp.http import *
+from ProgressedHttp.http import quote
 
 
 class HTTPTest(unittest.TestCase):
@@ -72,6 +73,18 @@ class HTTPTest(unittest.TestCase):
             'port': 443,
             'href': '/'
         })
+
+    def test_http_parser_quote(self):
+        parser = HTTPCons.http_parser
+
+        host = 'www.hellflame.net'
+        href = '/what'
+        method = 'get'
+
+        result = parser(host, href, method, None, {'name': '中文'})
+        href += '?name={}'.format(quote('中文'))
+
+        self.assertEqual(result['request'], "{method} {href} HTTP/1.1".format(method=method.upper(), href=href))
 
     def test_http_parser_simple_get(self):
         parser = HTTPCons.http_parser
