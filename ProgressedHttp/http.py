@@ -8,12 +8,31 @@ import sys
 import ssl
 import os
 
-__all__ = ['SockFeed', 'HTTPCons']
+__all__ = ['SockFeed', 'HTTPCons', 'request', 'get', 'post']
 
 if sys.version_info.major == 3:
     from urllib.request import quote
 else:
     from urllib import quote
+
+
+def request(href, method='GET', debug=False, **kwargs):
+    req = HTTPCons(debug)
+    req.request(href, method, kwargs.get('headers'), kwargs.get('data'))
+    feed = SockFeed(req)
+    if kwargs.get("disable_progress"):
+        feed.disable_progress = True
+    feed.http_response(kwargs.get('file_path', ''), kwargs.get('skip_body'),
+                       kwargs.get('chunk', 4096), kwargs.get('overwrite'))
+    return feed
+
+
+def get(href, debug=False, **kwargs):
+    return request(href, debug=debug, **kwargs)
+
+
+def post(href, debug=False, **kwargs):
+    return request(href, 'POST', debug=debug, **kwargs)
 
 
 class SockFeed(object):

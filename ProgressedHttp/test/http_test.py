@@ -213,6 +213,10 @@ class HTTPTest(unittest.TestCase):
                          '8688229badcaa3cb2730dab99a618be6',
                          "这里出错，多半是因为没有关闭文件, " + self.chunked_info(resp))
 
+    def test_request_get(self):
+        resp = get("https://static.hellflame.net/resource/5573012afe7227ab4457331df42af57d", disable_progress=True)
+        self.assertEqual(hashlib.md5(resp.data).hexdigest(), '8688229badcaa3cb2730dab99a618be6')
+
     @unittest.skip("GFW's Fault")
     def test_non_chunked_in_memory(self):
         req = HTTPCons()
