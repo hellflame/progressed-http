@@ -14,6 +14,9 @@ def run():
     # 传递连接对象
     resp = http.SockFeed(req)
 
+    # 必须要在 http_response 之前调用，设置 disable_progress = True
+    resp.disable_progress = True
+    
     # 获取http响应结果，响应结果保存在 resp.data 中
     resp.http_response()
 
