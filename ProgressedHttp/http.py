@@ -162,7 +162,7 @@ class SockFeed(object):
                     self.finish_loop()
                     return False
                 self.headers = {
-                    i.split(b":")[0]: i.split(b":")[1].strip() for i in seps[1:]
+                    i.split(b":")[0].title(): i.split(b":")[1].strip() for i in seps[1:]
                 }
                 # print("\n".join(["{} => {}".format(str(k), str(self.headers[k])) for k in self.headers]))
                 if skip_body:
