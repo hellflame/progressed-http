@@ -1,8 +1,15 @@
 # coding=utf8
 from __future__ import absolute_import, division, print_function
 
-__all__ = ['str_len', 'unit_change']
+import sys
 
+__all__ = ['str_len', 'unit_change', 'is_python3', 'is_python2']
+
+def is_python3():
+    return sys.version_info.major == 3
+
+def is_python2():
+    return not is_python3()
 
 def str_len(s):
     """

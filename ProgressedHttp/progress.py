@@ -4,6 +4,7 @@
 """
 from __future__ import absolute_import, division, print_function
 
+import os
 import sys
 import math
 import functools
@@ -11,7 +12,7 @@ import functools
 from subprocess import check_output
 from itertools import cycle
 from time import time
-from ProgressedHttp.utils import str_len, unit_change
+from ProgressedHttp.utils import *
 
 __all__ = ['bar']
 
@@ -37,21 +38,31 @@ def bar(width=0, fill='#'):
                         print("Total Length Invalid !")
                         self.progressed = self.total = 1
                         break
-                    if not width:
-                        try:
-                            w = int(check_output("stty size", stderr=None, shell=True).split(b" ")[1])
-                        except:
-                            w = 50
-                    else:
-                        w = width
+                    
                     if time() - last_update > .1:
+                        # 获取终端宽度
+                        if not width:
+                            try:
+                                if is_python3():
+                                    # py3 中的 get_terminal_size 显然要快于 check_output
+                                    w = os.get_terminal_size().columns
+                                else:
+                                    w = int(check_output("stty size", stderr=None, shell=True).split(b" ")[1])
+                            except Exception as e:
+                                w = 50
+                        else:
+                            w = width
+
                         if not hasattr(self, 'chunked') or not self.chunked:
                             # 普通编码进度条
                             percent = self.progressed / float(self.total)
                             # marks count
                             percent_show = "{}%".format(int(percent * 100))
                             # marks width
-                            title = getattr(self, 'title', '')
+                            if is_python3():
+                                title = getattr(self, 'title', '')
+                            else:
+                                title = getattr(self, 'title', '').decode('utf8')
                             mark_width = w - len(percent_show) - str_len(title) - 7
                             mark_count = int(math.floor(mark_width * percent))
                             sys.stdout.write(
